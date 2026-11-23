@@ -1,3 +1,6 @@
-*.csv
-*.xlsx
-*.xls
+.DS_Store
+Thumbs.db
+~$*
+*.pbix.bak
+# raw dataset is not stored here: download "Amazon Sale Report.csv" from Kaggle
+Amazon Sale Report.csv

@@ -1,8 +1,8 @@
 -- ============================================================
---  AMAZON SALES DATA ANALYSIS — SQL Server Project
+--  AMAZON SALES DATA ANALYSIS - SQL Server Project
 --  Author  :  Javariya Sohail
 --  Tool    : SQL Server Management Studio (SSMS)
---  Dataset : Amazon Sales Raw Data (2022)
+--  Dataset : Amazon India Sales Report (Mar-Jun 2022, Kaggle)
 --  Purpose : EDA, Schema Design, Data Cleaning & Business Insights
 -- ============================================================
 
@@ -80,7 +80,7 @@ ORDER BY DuplicateCount DESC;
 IF OBJECT_ID('dbo.OrderDetails', 'U') IS NOT NULL DROP TABLE OrderDetails;
 IF OBJECT_ID('dbo.Orders','U') IS NOT NULL DROP TABLE Orders;
 
--- 2.1 Orders — unique order identity
+-- 2.1 Orders - unique order identity
 CREATE TABLE Orders (
     [index] BIGINT PRIMARY KEY,
     order_id VARCHAR(50),
@@ -92,7 +92,7 @@ CREATE TABLE Orders (
     B2B BIT
 );
 
--- 2.2 OrderDetails — transactional / event data
+-- 2.2 OrderDetails - transactional / event data
 CREATE TABLE OrderDetails (
     detail_id INT IDENTITY(1,1) PRIMARY KEY,
     [index] BIGINT,
@@ -198,7 +198,7 @@ JOIN OrderDetails od ON o.[index] = od.[index]
 GROUP BY o.category
 ORDER BY CancellationRate_Pct DESC;
 
--- ?? 5.3 CATEGORY PERFORMANCE ????????????????????????????????
+-- 5.3 CATEGORY PERFORMANCE
 
 -- Revenue and volume by category
 SELECT
@@ -346,16 +346,34 @@ GROUP BY o.category;
 GO
 
 -- 6.3 Geographic view for map visual
+-- Revenue and order counts are shipped-only (consistent with the other views);
+-- state names are standardised (typos, abbreviations, casing).
 CREATE OR ALTER VIEW vw_StateRevenue AS
 SELECT
-    o.ship_state,
-    COUNT(DISTINCT o.order_id) AS UniqueOrders,
-    SUM(od.amount) AS Revenue,
-    ROUND(AVG(od.amount), 2) AS AvgOrderValue,
+    s.ship_state,
+    COUNT(DISTINCT CASE WHEN od.status LIKE '%Shipped%' THEN o.order_id END) AS UniqueOrders,
+    SUM(CASE WHEN od.status LIKE '%Shipped%' THEN od.amount END) AS Revenue,
+    ROUND(AVG(CASE WHEN od.status LIKE '%Shipped%' THEN od.amount END), 2) AS AvgOrderValue,
     COUNT(CASE WHEN od.status LIKE '%Cancel%' THEN 1 END) AS CancelledOrders
 FROM Orders o
 JOIN OrderDetails od ON o.[index] = od.[index]
-GROUP BY o.ship_state;
+CROSS APPLY (
+    SELECT CASE UPPER(LTRIM(RTRIM(o.ship_state)))
+        WHEN ''                        THEN 'UNKNOWN'
+        WHEN 'RJ'                      THEN 'RAJASTHAN'
+        WHEN 'RAJSHTHAN'               THEN 'RAJASTHAN'
+        WHEN 'RAJSTHAN'                THEN 'RAJASTHAN'
+        WHEN 'PB'                      THEN 'PUNJAB'
+        WHEN 'PUNJAB/MOHALI/ZIRAKPUR'  THEN 'PUNJAB'
+        WHEN 'NL'                      THEN 'NAGALAND'
+        WHEN 'AR'                      THEN 'ARUNACHAL PRADESH'
+        WHEN 'PONDICHERRY'             THEN 'PUDUCHERRY'
+        WHEN 'NEW DELHI'               THEN 'DELHI'
+        WHEN 'ORISSA'                  THEN 'ODISHA'
+        ELSE UPPER(LTRIM(RTRIM(o.ship_state)))
+    END AS ship_state
+) s
+GROUP BY s.ship_state;
 GO
 
 -- 6.4 Fulfilment & B2B summary view

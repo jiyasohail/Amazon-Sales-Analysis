@@ -1,189 +1,70 @@
-# 🛒 Amazon Sales Data Analysis --- End-to-End SQL Project
+# Amazon India Sales Analysis | SQL Server + Power BI
 
-## 📌 Project Overview
+End-to-end sales analytics project: a raw Amazon India sales file is cleaned and normalised in **SQL Server**, turned into reporting views, and visualised in a **Power BI** dashboard covering revenue, cancellations, categories and geography.
 
-This end-to-end data analysis project explores an Amazon India sales
-dataset using SQL Server (SSMS).
+## Business questions
 
-The project covers the full data workflow:
+- How much revenue is shipped, and how does it trend month by month?
+- What share of orders is cancelled, and in which categories and states?
+- Which product categories and states drive revenue?
+- How do Amazon-fulfilled and merchant-fulfilled orders compare?
 
--   Raw data exploration (EDA)
--   Database normalization (3NF)
--   Defensive data cleaning & validation
--   Business KPI analysis
--   Creation of reporting-ready SQL views for BI integration
+## Key findings
 
-The objective is to answer real business questions around:
+From the reporting views (Mar-Jun 2022, about 129k order lines):
 
--   Revenue performance\
--   Cancellation behavior\
--   Geographic sales distribution\
--   Fulfilment efficiency\
--   B2B vs B2C segmentation
+- Shipped revenue totals about 71.1M INR across about 109.7k shipped order lines.
+- About 14.2% of all order lines are cancelled.
+- Two categories, Set (49.9%) and Kurta (27.1%), generate roughly three quarters of shipped revenue; Western Dress adds another 14.2%.
+- Monthly shipped revenue peaks in April 2022 (26.2M), then declines through May (23.9M) and June (20.8M). March 2022 holds only a handful of orders, so it is a partial month.
 
-This project demonstrates production-style SQL practices rather than
-isolated query exercises.
+## Dashboard
 
-------------------------------------------------------------------------
+`powerbi/AmazonSales_Dashboard.pbix` connects to the five SQL views and contains:
 
-## 🗂️ Repository Structure
+- KPI cards: shipped revenue, total orders, cancellation rate, shipped orders
+- Shipped revenue by month (line)
+- Orders by status (bar)
+- Shipped revenue by category (bar)
+- Revenue by state (treemap)
 
-amazon-sales-project/
-│
-├── amazon_sales_analysis.sql     # Full SQL script (EDA → Schema → Insights → Views)
-├── README.md                     # Project documentation
-└── powerbi/                      # (Future dashboard layer)
+## Database design (3NF)
 
-------------------------------------------------------------------------
+| Table | Contents |
+| --- | --- |
+| `Orders` | order identity: index (PK), order_id, fulfilment, style, category, city, ship_state, B2B |
+| `OrderDetails` | transactions: detail_id (PK), index (FK), order_date, status, courier_status, amount, qty |
 
-## 📊 Dataset
+## SQL layer
 
-  -----------------------------------------------------------------------
-| Property    | Detail                                                                                                       |
-| ----------- | ------------------------------------------------------------------------------------------------------------ |
-| Source      | Amazon India Sales Dataset (Kaggle)                                                                          |
-| Period      | March 2022 – June 2022                                                                                       |
-| Rows        | ~128,975                                                                                                     |
-| Key Columns | order_id, date, status, fulfilment, style, category, ship_city, ship_state, courier_status, qty, amount, B2B |
+`sql/Amazon_Sales_Project.sql`: exploration and null audit, schema design, load with `TRY_CONVERT`, post-load validation, business analysis (revenue, cancellations, categories, time series, geography, fulfilment, styles), and five reporting views: `vw_MonthlyRevenue`, `vw_CategoryPerformance`, `vw_StateRevenue`, `vw_FulfilmentSummary`, `vw_OrderStatus`.
 
-------------------------------------------------------------------------
+Data quality handled in the views: `vw_StateRevenue` standardises inconsistent state names (for example RJ, Rajshthan and Rajsthan all map to Rajasthan, and New Delhi maps to Delhi) and reports shipped-only revenue so it matches the other views.
 
-## 🏗️ Database Schema (3NF Normalisation)
+## How to run
 
-The raw flat file was normalized into two related tables to eliminate
-redundancy and improve maintainability.
+1. Create the database: `CREATE DATABASE AmazonSales_Project;`
+2. Download the Amazon India sales report from Kaggle and import it as table `Amazon_Raw_Data` (SSMS > Tasks > Import Flat File).
+3. Run `sql/Amazon_Sales_Project.sql`.
+4. Open `powerbi/AmazonSales_Dashboard.pbix`. If your server is not `localhost`, change it in Transform data > Data source settings, then Refresh. The connection queries are also in `powerbi/sql_views_queries.pq`.
 
-### Orders
+## Repository structure
 
--   index (PK)
--   order_id
--   fulfilment
--   style
--   category
--   city
--   ship_state
--   B2B (BIT)
+```
+Amazon-Sales-Analysis/
+|-- sql/
+|   `-- Amazon_Sales_Project.sql
+|-- powerbi/
+|   |-- AmazonSales_Dashboard.pbix
+|   `-- sql_views_queries.pq
+`-- README.md
+```
 
-### OrderDetails
+## Tech stack
 
--   detail_id (PK)
--   index (FK → Orders)
--   order_date
--   status
--   courier_status
--   amount
--   qty
+SQL Server, SSMS, T-SQL (CTEs, window functions, views), Power BI Desktop, DAX.
 
-**Why normalise?**\
-Order identity attributes are stored once and referenced through a
-foreign key, avoiding duplication and improving query clarity.
+## Author
 
-------------------------------------------------------------------------
-
-## 🔍 Project Workflow
-
-### 1️⃣ Exploratory Data Analysis (EDA)
-
--   Row count verification
--   Date range validation
--   Distinct value analysis
--   B2B vs B2C split analysis
--   Top states by order volume
--   Full null audit
--   Duplicate order_id detection
-
-Defensive casting using TRY_CONVERT was applied to date, amount, and
-quantity fields.
-
-------------------------------------------------------------------------
-
-### 2️⃣ Schema Design & Data Loading
-
--   Designed 3NF schema with primary and foreign keys
--   Cast B2B to BIT type
--   Inserted distinct records into Orders
--   Inserted transactional data into OrderDetails
--   Applied safe type conversion using TRY_CONVERT
-
-------------------------------------------------------------------------
-
-### 3️⃣ Post-Load Validation
-
--   Null checks repeated
--   Date range validated
--   Row reconciliation performed
-
-------------------------------------------------------------------------
-
-## 📈 Business Questions Answered
-
--   Total shipped revenue & AOV
--   Cancellation rate overall & by category
--   Highest revenue categories
--   Month-over-month revenue trend
--   Top states and cities
--   Fulfilment comparison
--   B2B vs B2C revenue split
--   Product style performance
--   Running totals & ranking
-
-------------------------------------------------------------------------
-
-## 📦 BI Integration Layer (Planned)
-
-Five reporting-ready SQL views were created to support dashboard
-development:
-
--   vw_MonthlyRevenue
--   vw_CategoryPerformance
--   vw_StateRevenue
--   vw_FulfilmentSummary
--   vw_OrderStatus
-
-A Power BI dashboard layer will be added in the next iteration.
-
-------------------------------------------------------------------------
-
-## 🛠️ How to Run
-
-1.  Create database: CREATE DATABASE AmazonSales_Project;
-2.  Import raw CSV as Amazon_Raw_Data
-3.  Run amazon_sales_analysis.sql
-4.  Query the views for reporting
-
-------------------------------------------------------------------------
-
-## ⚙️ Tech Stack
-
--   SQL Server 2019+
--   SSMS
--   Power BI (Planned)
--   GitHub
-
-------------------------------------------------------------------------
-
-## 💡 Skills Demonstrated
-
--   Database normalization (1NF → 3NF)
--   Data quality auditing
--   Multi-table JOIN logic
--   Window functions (SUM OVER, RANK, LAG)
--   CTEs
--   KPI derivation
--   BI-ready view creation
-
-------------------------------------------------------------------------
-
-## 🚀 Future Improvements
-
--   Add indexing strategy
--   Optimize date aggregations
--   Deploy to cloud SQL
--   Add Power BI dashboard
-
-------------------------------------------------------------------------
-
-## 👤 Author
-
-Javariya Sohail\
-Computer Science Student \| Aspiring Data Analyst
+**Javariya Sohail** - Associate Data Analyst
+[LinkedIn](https://www.linkedin.com/in/javariya-sohail-0bb895253) | [GitHub](https://github.com/jiyasohail)
